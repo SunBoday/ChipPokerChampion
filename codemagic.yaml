@@ -1,0 +1,47 @@
+workflows:
+  ios-automatic-code-signing:
+    name: iOS automatic code signing
+    instance_type: mac_mini_m2
+    
+    environment:
+      groups:
+        - appstore_credentials
+      xcode: latest
+      cocoapods: default
+      
+    scripts:
+      - name: Set up keychain to be used for codesigning using Codemagic CLI 'keychain' command
+        script: |
+          keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "com.app.chip.ChipPokerChampion" --type IOS_APP_STORE --create --verbose
+      - name: Use system default keychain
+        script: |
+          keychain add-certificates --verbose
+      - name: Install pods
+        script: |
+          cd ChipPokerChampion
+          pod install --repo-update --verbose
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles --verbose
+      - name: Build ipa for distribution
+        script: |
+          xcode-project build-ipa --workspace "ChipPokerChampion/ChipPokerChampion.xcworkspace" --scheme "ChipPokerChampion" --config Release --verbose
+          
+    artifacts:
+      - build/ios/ipa/*.ipa
+    
+    publishing:
+      app_store_connect: # https://docs.codemagic.io/publishing-yaml/distribution
+        submit_to_app_store: true
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY # Contents of the API key
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER # Alphanumeric value that identifies the API key
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID # Alphanumeric value that identifies who created the API key
+      email:
+        recipients:
+          - "nguyenthithupham3946@gmail.com"
+        notify:
+          success: true
+          failure: true
